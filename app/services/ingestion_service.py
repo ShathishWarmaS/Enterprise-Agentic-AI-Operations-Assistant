@@ -13,7 +13,7 @@ from app.data.database import session_scope
 from app.data.tables import TableStore
 from app.ingestion.loaders import LoaderError, detect_source_type
 from app.ingestion.pipeline import run_pipeline
-from app.retrieval.vector_store import VectorStore
+from app.retrieval.backends.base import VectorBackend
 from app.schemas.documents import (
     DocumentStatus,
     IngestResult,
@@ -28,7 +28,7 @@ class IngestionError(RuntimeError):
 
 
 class IngestionService:
-    def __init__(self, *, settings, vector_store: VectorStore, table_store: TableStore) -> None:
+    def __init__(self, *, settings, vector_store: VectorBackend, table_store: TableStore) -> None:
         self._settings = settings
         self._vectors = vector_store
         self._tables = table_store

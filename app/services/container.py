@@ -10,8 +10,9 @@ from functools import lru_cache
 
 from app.config import Settings, get_settings
 from app.data.tables import TableStore
+from app.retrieval.embeddings import build_embedder
 from app.retrieval.retriever import Retriever
-from app.retrieval.vector_store import VectorStore
+from app.retrieval.vector_store import build_vector_store
 from app.services.ingestion_service import IngestionService
 from app.services.llm import LLMClient
 from app.services.session_state import SessionStore
@@ -23,7 +24,8 @@ class Container:
         settings.ensure_dirs()
         self.settings = settings
         self.llm = LLMClient(settings)
-        self.vector_store = VectorStore(settings.vector_store_dir)
+        self.embedder = build_embedder(settings)
+        self.vector_store = build_vector_store(settings, self.embedder)
         self.table_store = TableStore(settings.vector_store_dir)
         self.retriever = Retriever(
             self.vector_store,

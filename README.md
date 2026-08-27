@@ -158,8 +158,11 @@ All are optional; every one has a working default for offline use. See
 | `ANTHROPIC_MODEL` | `claude-sonnet-4-20250514` | model id for Claude mode |
 | `ANTHROPIC_MAX_TOKENS` | `1024` | per-response cap |
 | `DATABASE_URL` | `sqlite:///./storage/app.sqlite3` | any SQLAlchemy URL (Compose uses Postgres) |
-| `VECTOR_STORE_DIR` | `./storage/vector` | FAISS index + chunk metadata |
+| `VECTOR_STORE_DIR` | `./storage/vector` | FAISS index + chunk metadata (local backend) |
 | `UPLOAD_DIR` | `./storage/uploads` | stored source files |
+| `EMBEDDING_BACKEND` | `hash` | `hash` (offline deterministic) or `sentence_transformers` (neural; needs `.[embeddings]`, not in CI) |
+| `EMBEDDING_MODEL` | `sentence-transformers/all-MiniLM-L6-v2` | model id when `EMBEDDING_BACKEND=sentence_transformers` |
+| `VECTOR_BACKEND` | `local` | `local` (in-process FAISS/numpy) or `pgvector` (shared Postgres store; needs `.[pgvector]` + Postgres URL) |
 | `REDIS_URL` | — | optional; falls back to an in-process store |
 | `PDF_OCR_FALLBACK` | `false` | OCR scanned PDF pages (needs `.[ocr]` extra + `tesseract` binary) |
 | `CHUNK_SIZE` / `CHUNK_OVERLAP` | `800` / `120` | chunking |
@@ -167,6 +170,26 @@ All are optional; every one has a working default for offline use. See
 | `RETRIEVAL_MIN_SCORE` | `0.22` | below this, retrieval is "not confident" |
 | `API_HOST` / `API_PORT` | `0.0.0.0` / `8000` | uvicorn bind |
 | `LOG_LEVEL` | `INFO` | standard logging level |
+
+### Scaling / production backends
+
+The retrieval layer is pluggable via the two vars above; the offline defaults
+(`hash` / `local`) need no extra packages and no network.
+
+- **`VECTOR_BACKEND=local`** keeps the vector index in-process (FAISS, or a numpy
+  fallback). It is fast and dependency-light but single-writer: only one worker
+  can own the index, so it does not scale past one API process.
+- **`VECTOR_BACKEND=pgvector`** stores every vector in Postgres (`pgvector`
+  extension). All workers read and write the same corpus, and writes use
+  `INSERT ... ON CONFLICT DO NOTHING`, so it is safe for concurrent ingestion.
+  This is the multi-worker option. Needs `pip install -e ".[pgvector]"` and a
+  Postgres `DATABASE_URL`; the Compose `postgres` service already uses the
+  `pgvector/pgvector:pg16` image.
+- **`EMBEDDING_BACKEND=sentence_transformers`** swaps the lexical hashed-n-gram
+  embedding for a real neural encoder (`EMBEDDING_MODEL`). Needs
+  `pip install -e ".[embeddings]"` (pulls in torch, so it is never installed in
+  CI). Switching embedding backend changes the vector dimension, so the local
+  index refuses to load a stale one — `rm -rf storage/vector` and re-seed.
 
 ## API usage
 

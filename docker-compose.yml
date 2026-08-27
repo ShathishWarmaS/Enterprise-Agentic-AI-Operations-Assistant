@@ -11,6 +11,8 @@ services:
       REDIS_URL: redis://redis:6379/0
       VECTOR_STORE_DIR: /app/storage/vector
       UPLOAD_DIR: /app/storage/uploads
+      VECTOR_BACKEND: ${VECTOR_BACKEND:-local}
+      EMBEDDING_BACKEND: ${EMBEDDING_BACKEND:-hash}
     volumes:
       - storage:/app/storage
     depends_on:
@@ -29,6 +31,8 @@ services:
       REDIS_URL: redis://redis:6379/0
       VECTOR_STORE_DIR: /app/storage/vector
       UPLOAD_DIR: /app/storage/uploads
+      VECTOR_BACKEND: ${VECTOR_BACKEND:-local}
+      EMBEDDING_BACKEND: ${EMBEDDING_BACKEND:-hash}
     volumes:
       - storage:/app/storage
     depends_on:
@@ -47,7 +51,7 @@ services:
       - api
 
   postgres:
-    image: postgres:16-alpine
+    image: pgvector/pgvector:pg16
     environment:
       POSTGRES_USER: ops
       POSTGRES_PASSWORD: ops

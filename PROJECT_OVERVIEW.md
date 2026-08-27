@@ -39,9 +39,13 @@ between the drafted claims and the retrieved context is weak, the run is marked
 ungrounded and `degraded`, and the answer says the corpus does not cover the
 question. "I don't know" is a first-class output.
 
-**Small, swappable seams.** The embedding is lexical and offline; the
-`VectorStore` interface is deliberately tiny so a neural encoder can replace it
-without touching callers. `container.py` is the single place dependencies are
+**Small, swappable seams.** The retrieval layer is pluggable and these seams are
+real, not hypothetical: `Embedder` (`app/retrieval/embeddings.py`) has a
+`HashingEmbedder` default and a `SentenceTransformerEmbedder` alternative, and
+`VectorBackend` (`app/retrieval/backends/`) has `LocalVectorBackend` (in-process
+FAISS/numpy) and `PgVectorBackend` (shared Postgres, multi-worker). `EMBEDDING_BACKEND`
+and `VECTOR_BACKEND` pick them; the `build_embedder` / `build_vector_store`
+factories wire them. `container.py` is the single place dependencies are
 constructed, so tests and alternate backends have one seam to override. The
 `Tool` contract is plain JSON Schema so the same tool definitions serve the
 Action agent and an MCP server.
@@ -362,9 +366,12 @@ Deliberately **out of scope** for a portfolio project, with the reasoning:
   control and PII redaction are noted as future work in the cleaning stage.
 - **Synchronous ingestion.** Upload → ingest is a blocking request. Fine for
   the sample corpus; a Redis Streams queue is the noted path for large batches.
-- **Lexical embeddings.** Hashed n-grams, not a neural encoder — no model
-  download, fully deterministic evaluation. The `VectorStore` seam exists
-  precisely so this can be swapped.
+- **Lexical embeddings by default.** Hashed n-grams, not a neural encoder — no
+  model download, fully deterministic evaluation. `EMBEDDING_BACKEND=sentence_transformers`
+  swaps in a real encoder (needs the `embeddings` extra); the `Embedder` seam is
+  built for exactly this.
+- **In-process vector store by default.** `VECTOR_BACKEND=pgvector` moves the
+  index into Postgres for multi-worker deploys; the `VectorBackend` seam is real.
 - **No streaming.** `/agent/run` returns the whole result at once. SSE is noted
   as future work; it would not change any correctness property.
 

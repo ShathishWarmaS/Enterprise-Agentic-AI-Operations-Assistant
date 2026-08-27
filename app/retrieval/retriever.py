@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
-from app.retrieval.vector_store import VectorStore
+from app.retrieval.backends.base import VectorBackend
 from app.schemas.retrieval import Citation, RetrievalResult, RetrievedChunk
 
 
 class Retriever:
-    def __init__(self, store: VectorStore, *, top_k: int, min_score: float) -> None:
+    def __init__(self, store: VectorBackend, *, top_k: int, min_score: float) -> None:
         self._store = store
         self._top_k = top_k
         self._min_score = min_score
