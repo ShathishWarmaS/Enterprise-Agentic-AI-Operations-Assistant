@@ -1,0 +1,23 @@
+on-call scratch notes - not authoritative, clean these up someday
+
+2026-07-02
+  api-gateway p99 crept to 1.2s around 09:00. turned out to be a noisy neighbour
+  on node-7. cordoned the node, latency recovered. no user impact.
+
+2026-07-14
+  checkout down. see the real postmortem. tl;dr missing index -> pool exhaustion
+  -> 503s. rollback fixed it. rolled back at 14:31.
+
+2026-07-19
+  payments-gateway-token expired again. we keep getting bitten by the 90 day
+  rotation. gateway started returning 401, service turned that into 5xx.
+  rotated the secret with secretctl and bounced the pods. ~12 min of elevated
+  errors. NEED an alert 7 days before expiry.
+
+2026-08-03
+  redis memory at 85%. bumped the instance size. investigate merchant config
+  cache growth - TTL is 15 min so it should be bounded, something is wrong.
+
+random reminders:
+  - never flush the whole redis keyspace during the day
+  - deployctl rollback payment-service --to last-stable  (takes ~90s)

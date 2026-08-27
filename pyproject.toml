@@ -1,0 +1,70 @@
+[project]
+name = "enterprise-agentic-ai"
+version = "0.1.0"
+description = "Enterprise Agentic AI Operations Assistant - multi-agent RAG over messy enterprise data"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [{ name = "Shathish Warma S" }]
+
+dependencies = [
+    "fastapi>=0.111",
+    "uvicorn[standard]>=0.30",
+    "python-multipart>=0.0.9",
+    "pydantic>=2.7",
+    "pydantic-settings>=2.3",
+    "anthropic>=0.34",
+    "pandas>=2.2",
+    "numpy>=1.26",
+    "faiss-cpu>=1.8",
+    "pymupdf>=1.24",
+    "sqlalchemy>=2.0",
+    "psycopg2-binary>=2.9",
+    "redis>=5.0",
+    "httpx>=0.27",
+    "python-dotenv>=1.0",
+    "streamlit>=1.36",
+    "tenacity>=8.4",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.2",
+    "pytest-cov>=5.0",
+    "ruff>=0.5",
+    "black>=24.4",
+    "mypy>=1.10",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["app"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "W"]
+ignore = [
+    "B008",   # FastAPI Depends() in argument defaults is idiomatic
+    "B905",   # zip() strict= is 3.10+; equal-length is guaranteed at every call site
+    "UP042",  # keep (str, Enum) - plays nicer with pydantic/JSON than StrEnum here
+]
+
+[tool.black]
+line-length = 100
+target-version = ["py311"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+filterwarnings = ["ignore::DeprecationWarning"]
+
+[tool.mypy]
+python_version = "3.11"
+ignore_missing_imports = true
+warn_unused_ignores = true

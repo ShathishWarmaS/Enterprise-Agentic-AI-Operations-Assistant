@@ -1,0 +1,10 @@
+Incident ID , Service, Severity , Started At, Resolved At , Error Rate (%), Notes
+INC-1001, payment-service , High, 2026-07-14 14:02, 2026-07-14 14:49, 18, missing index -> pool exhaustion
+INC-1002,checkout,high,2026-07-14 14:05,2026-07-14 14:49, 12 ,downstream of payment-service
+INC-1003, api-gateway, Low , 2026-07-02 09:00, 2026-07-02 09:40, 0.4, noisy neighbour on node-7
+INC-1004, payment-service, MEDIUM, 2026-07-19 11:10, 2026-07-19 11:22, 6, gateway token expired (401 -> 5xx)
+INC-1005, search-service , low, 2026-07-21 03:15, , , flaky test alert, probably not real
+INC-1006,payment-service,High,2026-07-14 14:02,2026-07-14 14:49,18,missing index -> pool exhaustion
+INC-1007, billing-service, medium, 2026-08-03 22:40, 2026-08-03 23:30, 3, redis memory pressure
+INC-1008, checkout, Critical, 2026-08-10 00:00, 2026-08-10 00:05, 9999, ALERT STORM - monitoring bug, not a real outage
+INC-1009, api-gateway, , 2026-08-12 16:20, 2026-08-12 16:35, 1.1, brief 5xx blip, self-resolved

@@ -1,0 +1,57 @@
+[
+  {
+    "id": "q_5xx_cause",
+    "request": "What most often causes a 5xx spike on payment-service?",
+    "kind": "query",
+    "expected_sources": ["runbook_payment_service.md", "postmortem_2026-07-14_checkout_outage.md"],
+    "expected_answer_contains": ["connection pool"],
+    "expected_tools": ["search_documents"]
+  },
+  {
+    "id": "q_rollback_cmd",
+    "request": "How do we roll back payment-service and how long does it take?",
+    "kind": "query",
+    "expected_sources": ["runbook_payment_service.md", "oncall_notes.txt"],
+    "expected_answer_contains": ["rollback"],
+    "expected_tools": ["search_documents"]
+  },
+  {
+    "id": "q_when_scale",
+    "request": "When should we scale payment-service beyond its steady-state pod count?",
+    "kind": "query",
+    "expected_sources": ["capacity_guidelines.pdf", "runbook_payment_service.md"],
+    "expected_answer_contains": ["pods"],
+    "expected_tools": ["search_documents"]
+  },
+  {
+    "id": "q_unanswerable",
+    "request": "What is the SLA penalty clause in the payments gateway vendor contract?",
+    "kind": "query",
+    "expected_sources": [],
+    "unanswerable": true,
+    "expected_tools": ["search_documents"]
+  },
+  {
+    "id": "a_incident_decision",
+    "request": "payment-service is returning elevated 5xx errors after a deploy 10 minutes ago. Give me an incident summary, next steps, and a remediation checklist.",
+    "kind": "agent",
+    "expected_sources": ["runbook_payment_service.md", "postmortem_2026-07-14_checkout_outage.md"],
+    "expected_answer_contains": ["roll back"],
+    "expected_tools": ["search_documents", "draft_incident_summary", "generate_checklist"]
+  },
+  {
+    "id": "a_data_quality",
+    "request": "Summarise the incidents table: how many incidents per service, and flag any data-quality problems with the error rate column.",
+    "kind": "agent",
+    "expected_sources": [],
+    "expected_tools": ["query_data", "draft_incident_summary", "generate_checklist"]
+  },
+  {
+    "id": "a_token_expiry",
+    "request": "We are seeing 401s from the payments gateway turning into 5xx. What is going on and what should we do?",
+    "kind": "agent",
+    "expected_sources": ["runbook_payment_service.md", "oncall_notes.txt"],
+    "expected_answer_contains": ["token"],
+    "expected_tools": ["search_documents", "draft_incident_summary", "generate_checklist"]
+  }
+]

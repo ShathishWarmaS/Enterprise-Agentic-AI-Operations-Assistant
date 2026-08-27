@@ -1,0 +1,12 @@
+[
+  {"service": "payment-service", "date": "2026-07-13", "p99_latency_ms": 380, "error_rate_pct": 0.4, "requests": 1250000},
+  {"service": "payment-service", "date": "2026-07-14", "p99_latency_ms": 2100, "error_rate_pct": 18.0, "requests": 1180000},
+  {"service": "payment-service", "date": "2026-07-15", "p99_latency_ms": 360, "error_rate_pct": 0.3, "requests": 1240000},
+  {"service": "payment-service", "date": "2026-07-19", "p99_latency_ms": 520, "error_rate_pct": 6.0, "requests": 1210000},
+  {"service": "checkout", "date": "2026-07-14", "p99_latency_ms": 1900, "error_rate_pct": 12.0, "requests": 640000},
+  {"service": "checkout", "date": "2026-07-15", "p99_latency_ms": 410, "error_rate_pct": 0.2, "requests": 655000},
+  {"service": "api-gateway", "date": "2026-07-02", "p99_latency_ms": 1200, "error_rate_pct": 0.4, "requests": 5400000},
+  {"service": "api-gateway", "date": "2026-07-03", "p99_latency_ms": 300, "error_rate_pct": null, "requests": 5500000},
+  {"service": "billing-service", "date": "2026-08-03", "p99_latency_ms": 700, "error_rate_pct": 3.0, "requests": 210000},
+  {"service": "billing-service", "date": "2026-08-04", "p99_latency_ms": null, "error_rate_pct": 0.1, "requests": 205000}
+]
