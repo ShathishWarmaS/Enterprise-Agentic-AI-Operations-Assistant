@@ -30,7 +30,10 @@ async def lifespan(_: FastAPI):
         container.vector_store.backend,
         container.session_store.backend_name,
     )
-    yield
+    try:
+        yield
+    finally:
+        container.job_queue.shutdown()
 
 
 app = FastAPI(

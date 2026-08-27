@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import io
+import json
+import time
 
 
 def test_health(client):
@@ -68,6 +70,56 @@ def test_agent_run_and_session_fetch(client):
 
 def test_unknown_session_is_404(client):
     assert client.get("/sessions/nope").status_code == 404
+
+
+def test_async_ingest_returns_202_and_job_reaches_succeeded(client):
+    csv = b"svc,rps\napi,120\nweb,80\n"
+    up = client.post(
+        "/documents/upload",
+        files={"file": ("async_svc.csv", io.BytesIO(csv), "text/csv")},
+    )
+    doc_id = up.json()["document"]["document_id"]
+
+    ing = client.post("/documents/ingest", json={"document_id": doc_id, "async": True})
+    assert ing.status_code == 202
+    jobs = ing.json()["jobs"]
+    assert jobs and jobs[0]["document_id"] == doc_id
+    job_id = jobs[0]["job_id"]
+
+    for _ in range(200):
+        body = client.get(f"/jobs/{job_id}").json()
+        if body["status"] in {"succeeded", "failed"}:
+            break
+        time.sleep(0.05)
+    assert body["status"] == "succeeded"
+    assert body["result"]["chunks_created"] >= 1
+
+
+def test_unknown_job_is_404(client):
+    assert client.get("/jobs/job_deadbeef").status_code == 404
+
+
+def test_agent_run_stream_emits_steps_then_result(client):
+    from app.schemas.agents import AgentRunResult
+
+    events = []
+    with client.stream(
+        "POST",
+        "/agent/run/stream",
+        json={"request": "payment-service is throwing 5xx after a deploy; next steps?"},
+    ) as resp:
+        assert resp.status_code == 200
+        event = None
+        for line in resp.iter_lines():
+            if line.startswith("event: "):
+                event = line[len("event: ") :]
+            elif line.startswith("data: "):
+                events.append((event, json.loads(line[len("data: ") :])))
+
+    kinds = [e[0] for e in events]
+    assert kinds.count("step") >= 3
+    assert kinds[-1] == "result"
+    AgentRunResult.model_validate(events[-1][1])
 
 
 def test_evaluate_endpoint(client):

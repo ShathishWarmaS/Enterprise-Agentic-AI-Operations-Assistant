@@ -9,7 +9,7 @@ from datetime import UTC, datetime
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.data.models import DocumentRow, SessionRow
+from app.data.models import DocumentRow, JobRow, SessionRow
 from app.schemas.documents import (
     DocumentStatus,
     IngestResult,
@@ -78,6 +78,34 @@ def save_session(
 
 def get_session_record(session: Session, session_id: str) -> SessionRow | None:
     return session.get(SessionRow, session_id)
+
+
+def create_job(session: Session, *, job_id: str, kind: str, payload: dict) -> JobRow:
+    row = JobRow(id=job_id, kind=kind, status="queued", payload=payload)
+    session.add(row)
+    return row
+
+
+def get_job(session: Session, job_id: str) -> JobRow | None:
+    return session.get(JobRow, job_id)
+
+
+def update_job_status(
+    session: Session,
+    job_id: str,
+    status: str,
+    result: dict | None = None,
+    error: str | None = None,
+) -> None:
+    row = session.get(JobRow, job_id)
+    if row is None:
+        raise KeyError(f"unknown job_id {job_id!r}")
+    row.status = status
+    if result is not None:
+        row.result = result
+    if error is not None:
+        row.error = error
+    row.updated_at = datetime.now(UTC)
 
 
 def document_to_schema(row: DocumentRow) -> UploadedDocument:

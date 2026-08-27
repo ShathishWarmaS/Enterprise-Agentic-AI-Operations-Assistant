@@ -165,6 +165,9 @@ All are optional; every one has a working default for offline use. See
 | `VECTOR_BACKEND` | `local` | `local` (in-process FAISS/numpy) or `pgvector` (shared Postgres store; needs `.[pgvector]` + Postgres URL) |
 | `REDIS_URL` | — | optional; falls back to an in-process store |
 | `PDF_OCR_FALLBACK` | `false` | OCR scanned PDF pages (needs `.[ocr]` extra + `tesseract` binary) |
+| `INGEST_ASYNC` | `false` | when true, `POST /documents/ingest` returns 202 + a `job_id` and runs on a background worker |
+| `INGEST_WORKERS` | `2` | thread-pool size for background ingestion jobs |
+| `AGENT_PARALLEL` | `true` | run the independent retrieval + data-analysis agent steps concurrently |
 | `CHUNK_SIZE` / `CHUNK_OVERLAP` | `800` / `120` | chunking |
 | `RETRIEVAL_TOP_K` | `5` | chunks per query |
 | `RETRIEVAL_MIN_SCORE` | `0.22` | below this, retrieval is "not confident" |
@@ -200,8 +203,30 @@ The retrieval layer is pluggable via the two vars above; the offline defaults
 | `POST /documents/ingest` | `{"document_id": "..."}` or `{"ingest_all": true}` |
 | `POST /query` | `{"query": "...", "top_k": 5}` → grounded answer + citations |
 | `POST /agent/run` | `{"request": "..."}` → plan, agent steps, decision, validation |
+| `POST /agent/run/stream` | same body as `/agent/run` → SSE stream of `step` events then a final `result` event |
 | `POST /evaluate` | `{}` or `{"cases_path": "..."}` → metric summary |
+| `GET /jobs/{job_id}` | status of a background ingestion job (`queued` / `running` / `succeeded` / `failed`) |
 | `GET /sessions/{session_id}` | stored result of a prior `/query`, `/agent/run`, or `/evaluate` |
+
+### Async ingestion
+
+By default `POST /documents/ingest` runs the pipeline synchronously and returns
+the `IngestResult`. Pass `{"async": true}` in the body (or set `INGEST_ASYNC=true`
+globally) to enqueue the work on a background thread pool instead: the endpoint
+returns **202** with `{"jobs": [{"document_id", "job_id"}]}`, and you poll
+`GET /jobs/{job_id}` until `status` is `succeeded` (the `IngestResult` is in
+`result`) or `failed` (`error` has the reason). `INGEST_WORKERS` sizes the pool.
+The seed script and the eval harness always use the synchronous path.
+
+### SSE streaming
+
+```bash
+curl -N -X POST http://localhost:8000/agent/run/stream \
+  -H 'content-type: application/json' \
+  -d '{"request": "payment-service is throwing 5xx after a deploy; give me next steps"}'
+# event: step  / data: {...}   (one per agent step, in order)
+# event: result / data: {...}  (the full AgentRunResult)
+```
 
 ### Sample curl commands
 

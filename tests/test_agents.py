@@ -79,6 +79,26 @@ def test_orchestrator_end_to_end_mock(seeded_container):
     assert run.llm_mode == "mock"
 
 
+def test_parallel_and_sequential_orchestrator_agree(seeded_container, monkeypatch):
+    request = "how many incidents per service in the incidents table? also what's the runbook say?"
+
+    monkeypatch.setattr(seeded_container.settings, "agent_parallel", False)
+    seq = seeded_container.orchestrator().run(request, session_id="cmp")
+
+    monkeypatch.setattr(seeded_container.settings, "agent_parallel", True)
+    par = seeded_container.orchestrator().run(request, session_id="cmp")
+
+    def norm(run):
+        d = run.model_dump(mode="json")
+        for step in d["steps"]:
+            for call in step["tool_calls"]:
+                call["duration_ms"] = 0  # wall-clock timing is not part of the output
+        return d
+
+    assert [s.agent for s in par.steps] == [s.agent for s in seq.steps]
+    assert norm(par) == norm(seq)
+
+
 def test_orchestrator_handles_unanswerable_gracefully(seeded_container):
     run = seeded_container.orchestrator().run(
         "what is the airspeed velocity of an unladen swallow?", session_id="t-nonsense"

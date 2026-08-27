@@ -23,10 +23,36 @@ class HealthResponse(BaseModel):
 class IngestRequest(BaseModel):
     document_id: str | None = Field(default=None, description="omit with ingest_all=true")
     ingest_all: bool = False
+    async_: bool = Field(
+        default=False,
+        alias="async",
+        description="run ingestion on a background worker; poll GET /jobs/{job_id}",
+    )
+
+    model_config = {"populate_by_name": True}
 
 
 class IngestResponse(BaseModel):
     results: list[IngestResult]
+
+
+class IngestJobRef(BaseModel):
+    document_id: str
+    job_id: str
+
+
+class IngestAcceptedResponse(BaseModel):
+    jobs: list[IngestJobRef]
+
+
+class JobResponse(BaseModel):
+    job_id: str
+    kind: str
+    status: str
+    result: dict | None = None
+    error: str | None = None
+    created_at: str
+    updated_at: str
 
 
 class QueryRequest(BaseModel):
@@ -72,8 +98,11 @@ __all__ = [
     "EvaluateRequest",
     "EvalSummary",
     "HealthResponse",
+    "IngestAcceptedResponse",
+    "IngestJobRef",
     "IngestRequest",
     "IngestResponse",
+    "JobResponse",
     "QueryRequest",
     "QueryResponse",
     "SessionResponse",

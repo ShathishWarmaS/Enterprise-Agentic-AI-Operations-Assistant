@@ -66,6 +66,15 @@ runs before action; data analysis runs only when planned *and* tables exist; a
 failed step sets `degraded=True` and records its error but does not abort;
 validation always runs last.
 
+When `AGENT_PARALLEL` is set (the default) and both are needed, the retrieval
+and data-analysis steps — which are independent — run concurrently on a
+2-worker thread pool; their results are still consumed in a fixed order, so the
+`steps` list and the run output are byte-identical to the sequential path. The
+orchestrator's single execution path is `run_streaming()`, an iterator that
+yields each `AgentStep` as it completes and finally the full `AgentRunResult`;
+`run()` just collects it, and `POST /agent/run/stream` forwards each item as an
+SSE `step` / `result` event.
+
 ---
 
 ## Ingestion pipeline

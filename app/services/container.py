@@ -14,6 +14,7 @@ from app.retrieval.embeddings import build_embedder
 from app.retrieval.retriever import Retriever
 from app.retrieval.vector_store import build_vector_store
 from app.services.ingestion_service import IngestionService
+from app.services.jobs import JobQueue
 from app.services.llm import LLMClient
 from app.services.session_state import SessionStore
 from app.tools.registry import ToolRegistry
@@ -34,6 +35,7 @@ class Container:
         )
         self.tools = ToolRegistry(retriever=self.retriever, table_store=self.table_store)
         self.session_store = SessionStore(settings.redis_url)
+        self.job_queue = JobQueue(settings)
         self.ingestion = IngestionService(
             settings=settings,
             vector_store=self.vector_store,

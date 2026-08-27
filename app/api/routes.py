@@ -5,18 +5,24 @@ response. Domain errors map to 4xx; anything unexpected propagates to the
 
 from __future__ import annotations
 
+import functools
+import json
 import uuid
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi.responses import JSONResponse, StreamingResponse
 
 from app.api.schemas import (
     AgentRunRequest,
     AgentRunResponse,
     EvaluateRequest,
     HealthResponse,
+    IngestAcceptedResponse,
+    IngestJobRef,
     IngestRequest,
     IngestResponse,
+    JobResponse,
     QueryRequest,
     QueryResponse,
     SessionResponse,
@@ -66,11 +72,15 @@ async def upload_document(
     return UploadResponse(document=doc)
 
 
-@router.post("/documents/ingest", response_model=IngestResponse, tags=["documents"])
+@router.post(
+    "/documents/ingest",
+    response_model=IngestResponse | IngestAcceptedResponse,
+    tags=["documents"],
+)
 def ingest_documents(
     body: IngestRequest,
     container: Container = Depends(container_dep),
-) -> IngestResponse:
+):
     if not body.ingest_all and not body.document_id:
         raise HTTPException(400, "provide document_id or set ingest_all=true")
 
@@ -83,6 +93,20 @@ def ingest_documents(
     if not ids:
         raise HTTPException(404, "no matching documents to ingest")
 
+    if container.settings.ingest_async or body.async_:
+        jobs: list[IngestJobRef] = []
+        for document_id in ids:
+            job_id = container.job_queue.submit(
+                "ingest",
+                {"document_id": document_id},
+                functools.partial(_run_ingest_job, container, document_id),
+            )
+            jobs.append(IngestJobRef(document_id=document_id, job_id=job_id))
+        return JSONResponse(
+            status_code=202,
+            content=IngestAcceptedResponse(jobs=jobs).model_dump(),
+        )
+
     results = []
     for document_id in ids:
         try:
@@ -90,6 +114,22 @@ def ingest_documents(
         except IngestionError as exc:
             raise HTTPException(422, str(exc)) from exc
     return IngestResponse(results=results)
+
+
+@router.get("/jobs/{job_id}", response_model=JobResponse, tags=["documents"])
+def get_job(job_id: str, container: Container = Depends(container_dep)) -> JobResponse:
+    row = container.job_queue.get(job_id)
+    if row is None:
+        raise HTTPException(404, f"no job {job_id!r}")
+    return JobResponse(
+        job_id=row.id,
+        kind=row.kind,
+        status=row.status,
+        result=row.result,
+        error=row.error,
+        created_at=row.created_at.isoformat() if row.created_at else "",
+        updated_at=row.updated_at.isoformat() if row.updated_at else "",
+    )
 
 
 @router.post("/query", response_model=QueryResponse, tags=["rag"])
@@ -121,6 +161,30 @@ def agent_run(
         raise HTTPException(400, str(exc)) from exc
     _persist_session(container, session_id, "agent", body.request, result.model_dump(mode="json"))
     return AgentRunResponse(session_id=session_id, result=result)
+
+
+@router.post("/agent/run/stream", tags=["agents"])
+def agent_run_stream(
+    body: AgentRunRequest,
+    container: Container = Depends(container_dep),
+) -> StreamingResponse:
+    orchestrator = container.orchestrator()
+    session_id = f"a_{uuid.uuid4().hex[:12]}"
+
+    def event_stream():
+        result_payload: dict | None = None
+        try:
+            for kind, payload in orchestrator.run_streaming(body.request, session_id=session_id):
+                if kind == "result":
+                    result_payload = payload
+                yield f"event: {kind}\ndata: {json.dumps(payload)}\n\n"
+        except ValueError as exc:
+            yield f"event: error\ndata: {json.dumps({'detail': str(exc)})}\n\n"
+            return
+        if result_payload is not None:
+            _persist_session(container, session_id, "agent", body.request, result_payload)
+
+    return StreamingResponse(event_stream(), media_type="text/event-stream")
 
 
 @router.post("/evaluate", response_model=EvalSummary, tags=["eval"])
@@ -158,6 +222,10 @@ def get_session(session_id: str, container: Container = Depends(container_dep)) 
             created_at=row.created_at.isoformat() if row.created_at else "",
             response=row.response,
         )
+
+
+def _run_ingest_job(container: Container, document_id: str) -> dict:
+    return container.ingestion.ingest(document_id).model_dump(mode="json")
 
 
 def _persist_session(
