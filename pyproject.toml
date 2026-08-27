@@ -41,6 +41,14 @@ ocr = [
     "pytesseract>=0.3.10",
     "pillow>=10.3",
 ]
+# Neural sentence embeddings (EMBEDDING_BACKEND=sentence_transformers).
+embeddings = [
+    "sentence-transformers>=3.0",
+]
+# Shared pgvector-backed vector store (VECTOR_BACKEND=pgvector).
+pgvector = [
+    "pgvector>=0.3",
+]
 
 [build-system]
 requires = ["hatchling"]

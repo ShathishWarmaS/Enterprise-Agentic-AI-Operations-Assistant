@@ -21,6 +21,16 @@ class LLMMode(str, Enum):
     claude = "claude"
 
 
+class EmbeddingBackend(str, Enum):
+    hash = "hash"
+    sentence_transformers = "sentence_transformers"
+
+
+class VectorBackend(str, Enum):
+    local = "local"
+    pgvector = "pgvector"
+
+
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
@@ -42,12 +52,26 @@ class Settings(BaseSettings):
     # When true, PDF pages with no embedded text are OCR'd with Tesseract
     # (requires the `ocr` extra and the tesseract binary). Off by default.
     pdf_ocr_fallback: bool = False
+    # When true, POST /documents/ingest returns 202 + a job_id and the work runs
+    # on a background worker; poll GET /jobs/{job_id}. Off keeps the sync path
+    # (used by the seed script and the eval harness).
+    ingest_async: bool = False
+    ingest_workers: int = Field(default=2, ge=1, le=16)
 
     # Retrieval
+    embedding_backend: EmbeddingBackend = EmbeddingBackend.hash
+    # Only used when embedding_backend=sentence_transformers (needs the
+    # `embeddings` extra). A small CPU model is the sensible default.
+    embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2"
+    vector_backend: VectorBackend = VectorBackend.local
     chunk_size: int = Field(default=800, ge=200, le=4000)
     chunk_overlap: int = Field(default=120, ge=0, le=1000)
     retrieval_top_k: int = Field(default=5, ge=1, le=50)
     retrieval_min_score: float = Field(default=0.22, ge=0.0, le=1.0)
+
+    # Agents
+    # Run independent agent steps (retrieval + data analysis) concurrently.
+    agent_parallel: bool = True
 
     # API
     api_host: str = "0.0.0.0"
@@ -63,6 +87,11 @@ class Settings(BaseSettings):
             )
         if self.chunk_overlap >= self.chunk_size:
             raise ValueError("CHUNK_OVERLAP must be smaller than CHUNK_SIZE")
+        if self.vector_backend is VectorBackend.pgvector and self.database_url.startswith("sqlite"):
+            raise ValueError(
+                "VECTOR_BACKEND=pgvector needs a Postgres DATABASE_URL "
+                "(the pgvector extension lives in Postgres)"
+            )
         return self
 
     def ensure_dirs(self) -> None:
