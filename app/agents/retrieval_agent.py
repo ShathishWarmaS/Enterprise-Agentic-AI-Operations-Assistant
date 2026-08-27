@@ -98,9 +98,10 @@ class RetrievalAgent(Agent):
         scored: list[tuple[float, str, int]] = []
         for idx, chunk in enumerate(result.chunks, start=1):
             for sentence in split_sentences(chunk.text):
-                s_words = set(re.findall(r"[a-z0-9]+", sentence.lower()))
-                if not s_words:
-                    continue
+                words = re.findall(r"[a-z0-9]+", sentence.lower())
+                s_words = set(words)
+                if len(words) < 4 or sentence.rstrip().endswith(":"):
+                    continue  # skip heading fragments ("Steps:", "Rollback")
                 overlap = len(query_words & s_words) / len(query_words or {1})
                 scored.append((overlap, sentence, idx))
         scored.sort(key=lambda t: t[0], reverse=True)

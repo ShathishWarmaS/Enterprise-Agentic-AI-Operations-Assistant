@@ -268,8 +268,12 @@ def _best_sentence(text: str, request: str, *, min_overlap: float = 0.0) -> str 
     query_words = set(re.findall(r"[a-z0-9]+", request.lower()))
     best, best_score, best_overlap = "", -1.0, 0.0
     for sentence in split_sentences(text):
-        s_words = set(re.findall(r"[a-z0-9]+", sentence.lower()))
-        if not s_words:
+        words = re.findall(r"[a-z0-9]+", sentence.lower())
+        s_words = set(words)
+        # Skip heading fragments like "Steps:" or "Rollback" - too short to be a
+        # real observation, and they match spuriously when the request happens to
+        # contain the same word (e.g. "next steps").
+        if len(words) < 4 or sentence.rstrip().endswith(":"):
             continue
         overlap = len(query_words & s_words) / len(s_words)
         score = overlap / len(s_words) ** 0.25
