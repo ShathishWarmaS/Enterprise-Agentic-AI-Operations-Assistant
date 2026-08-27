@@ -19,10 +19,13 @@ jobs:
       - name: Set up Python 3.11
         run: uv python install 3.11
 
+      - name: Install Tesseract (for the OCR fallback test)
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends tesseract-ocr
+
       - name: Create venv and install
         run: |
           uv venv --python 3.11
-          uv pip install -e ".[dev]"
+          uv pip install -e ".[dev,ocr]"
 
       - name: Ruff (lint)
         run: uv run ruff check .

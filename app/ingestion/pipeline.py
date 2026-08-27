@@ -32,8 +32,9 @@ def run_pipeline(
     filename: str,
     chunk_size: int,
     chunk_overlap: int,
+    ocr_pdf: bool = False,
 ) -> IngestionOutput:
-    source: LoadedSource = load(path)
+    source: LoadedSource = load(path, ocr_pdf=ocr_pdf)
 
     cleaning = CleaningReport()
     if source.frame is not None:

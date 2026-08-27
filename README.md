@@ -30,8 +30,9 @@ half-cleaned. This project builds an assistant that:
 
 ## Features
 
-- **Ingestion** for PDF (PyMuPDF), CSV/TSV (including ragged rows), JSON
-  (objects and record arrays), Markdown, and plain text.
+- **Ingestion** for PDF (PyMuPDF text layer, with an optional Tesseract OCR
+  fallback for scanned pages), CSV/TSV (including ragged rows), JSON (objects and
+  record arrays), Markdown, and plain text.
 - **Cleaning & validation**: column-name normalisation, type coercion, null and
   duplicate detection, outlier / sentinel-value flagging, with a structured
   `CleaningReport`.
@@ -103,7 +104,7 @@ cd Enterprise-Agentic-AI-Operations-Assistant
 
 # 3. create the environment
 uv venv --python 3.11
-uv pip install -e ".[dev]"
+uv pip install -e ".[dev]"          # add ,ocr for scanned-PDF support (needs tesseract)
 
 # 4. configure (all defaults work offline)
 cp .env.example .env
@@ -160,6 +161,7 @@ All are optional; every one has a working default for offline use. See
 | `VECTOR_STORE_DIR` | `./storage/vector` | FAISS index + chunk metadata |
 | `UPLOAD_DIR` | `./storage/uploads` | stored source files |
 | `REDIS_URL` | — | optional; falls back to an in-process store |
+| `PDF_OCR_FALLBACK` | `false` | OCR scanned PDF pages (needs `.[ocr]` extra + `tesseract` binary) |
 | `CHUNK_SIZE` / `CHUNK_OVERLAP` | `800` / `120` | chunking |
 | `RETRIEVAL_TOP_K` | `5` | chunks per query |
 | `RETRIEVAL_MIN_SCORE` | `0.22` | below this, retrieval is "not confident" |
@@ -294,6 +296,9 @@ Action agent uses.
 - Groundedness is checked by content-word / trigram overlap, not an NLI model.
   It is tuned to be conservative (reject weak-but-true over accept fabricated).
 - The evaluation set is small (7 cases) and illustrative, not a benchmark.
+- Scanned/image-only PDFs need `PDF_OCR_FALLBACK=true`, the `.[ocr]` extra, and a
+  Tesseract install; without them such a PDF is rejected with a clear error
+  rather than ingested empty. OCR accuracy is Tesseract's, not tuned here.
 - No authentication, rate limiting, or multi-tenant isolation — out of scope for
   a portfolio project (see PROJECT_OVERVIEW.md → production trade-offs).
 

@@ -38,6 +38,11 @@ class Settings(BaseSettings):
     # Redis (optional)
     redis_url: str | None = None
 
+    # Ingestion
+    # When true, PDF pages with no embedded text are OCR'd with Tesseract
+    # (requires the `ocr` extra and the tesseract binary). Off by default.
+    pdf_ocr_fallback: bool = False
+
     # Retrieval
     chunk_size: int = Field(default=800, ge=200, le=4000)
     chunk_overlap: int = Field(default=120, ge=0, le=1000)

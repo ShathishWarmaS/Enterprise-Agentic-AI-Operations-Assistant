@@ -8,6 +8,11 @@ ENV PYTHONUNBUFFERED=1 \
 
 WORKDIR /app
 
+# Tesseract powers the optional PDF OCR fallback (inert unless PDF_OCR_FALLBACK=true).
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends tesseract-ocr \
+    && rm -rf /var/lib/apt/lists/*
+
 # uv for fast, reproducible installs
 COPY --from=ghcr.io/astral-sh/uv:0.5.11 /uv /bin/uv
 
@@ -17,7 +22,7 @@ COPY frontend ./frontend
 COPY scripts ./scripts
 COPY sample_data ./sample_data
 
-RUN uv pip install --system --no-cache .
+RUN uv pip install --system --no-cache ".[ocr]"
 
 # Non-root runtime
 RUN useradd --create-home --uid 10001 appuser \

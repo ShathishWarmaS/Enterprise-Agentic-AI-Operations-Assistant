@@ -35,6 +35,12 @@ dev = [
     "black>=24.4",
     "mypy>=1.10",
 ]
+# OCR fallback for scanned/image-only PDFs. Also needs the Tesseract binary on
+# PATH (`brew install tesseract` / `apt-get install tesseract-ocr`).
+ocr = [
+    "pytesseract>=0.3.10",
+    "pillow>=10.3",
+]
 
 [build-system]
 requires = ["hatchling"]

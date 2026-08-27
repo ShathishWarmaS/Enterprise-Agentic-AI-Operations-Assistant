@@ -65,6 +65,48 @@ def test_cleaning_coerces_and_flags_nulls():
     )
 
 
+def _make_image_only_pdf(path, text: str) -> None:
+    """A PDF whose only content is a rasterised image of `text` - no text layer."""
+    import pymupdf
+
+    src = pymupdf.open()
+    page = src.new_page()
+    page.insert_text((72, 200), text, fontsize=32)
+    pix = page.get_pixmap(dpi=200)
+
+    out = pymupdf.open()
+    opage = out.new_page(width=pix.width, height=pix.height)
+    opage.insert_image(opage.rect, pixmap=pix)
+    out.save(path)
+    out.close()
+    src.close()
+
+
+def test_scanned_pdf_without_ocr_is_rejected(tmp_dir):
+    pdf = tmp_dir / "scan.pdf"
+    _make_image_only_pdf(pdf, "PACKING SLIP 90210")
+    with pytest.raises(LoaderError, match="no extractable text"):
+        load(pdf)
+    with pytest.raises(LoaderError, match="PDF_OCR_FALLBACK"):
+        load(pdf)
+
+
+def test_scanned_pdf_with_ocr_extracts_text(tmp_dir):
+    pytest.importorskip("pytesseract")
+    pytest.importorskip("PIL")
+    import pytesseract
+
+    try:
+        pytesseract.get_tesseract_version()
+    except Exception:  # noqa: BLE001 - binary not installed on this host
+        pytest.skip("tesseract binary not available")
+
+    pdf = tmp_dir / "scan.pdf"
+    _make_image_only_pdf(pdf, "INVOICE 12345")
+    source = load(pdf, ocr_pdf=True)
+    assert "12345" in source.text.replace(" ", "")
+
+
 def test_chunking_produces_ordered_chunks():
     body = "# Title\n\nFirst paragraph on databases.\n\n## Section\n\nSecond paragraph on caches."
     source = LoadedSource(source_type=SourceType.text, text=body)

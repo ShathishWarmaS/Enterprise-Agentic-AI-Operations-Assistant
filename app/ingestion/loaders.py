@@ -7,6 +7,7 @@ or raises `LoaderError` with a specific reason. No loader swallows exceptions.
 from __future__ import annotations
 
 import json
+import logging
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -53,15 +54,16 @@ def detect_source_type(path: Path) -> SourceType:
         ) from None
 
 
-def load(path: Path) -> LoadedSource:
+def load(path: Path, *, ocr_pdf: bool = False) -> LoadedSource:
     if not path.exists():
         raise LoaderError(f"file not found: {path}")
     if path.stat().st_size == 0:
         raise LoaderError(f"file is empty: {path.name}")
 
     source_type = detect_source_type(path)
+    if source_type is SourceType.pdf:
+        return _load_pdf(path, ocr=ocr_pdf)
     loader = {
-        SourceType.pdf: _load_pdf,
         SourceType.csv: _load_csv,
         SourceType.json: _load_json,
         SourceType.markdown: _load_text,
@@ -80,7 +82,7 @@ def _load_text(path: Path) -> LoadedSource:
     return LoadedSource(source_type=stype, text=raw)
 
 
-def _load_pdf(path: Path) -> LoadedSource:
+def _load_pdf(path: Path, *, ocr: bool = False) -> LoadedSource:
     try:
         import pymupdf
     except ImportError as exc:  # pragma: no cover - dependency guaranteed by pyproject
@@ -88,18 +90,53 @@ def _load_pdf(path: Path) -> LoadedSource:
 
     parts: list[str] = []
     segments: list[tuple[str, str]] = []
+    ocr_pages = 0
     with pymupdf.open(path) as doc:
         if doc.page_count == 0:
             raise LoaderError(f"{path.name} has no pages")
         for page_index in range(doc.page_count):
-            page_text = doc.load_page(page_index).get_text("text").strip()
+            page = doc.load_page(page_index)
+            page_text = page.get_text("text").strip()
+            if not page_text and ocr:
+                page_text = _ocr_page(page, pymupdf).strip()
+                if page_text:
+                    ocr_pages += 1
             if page_text:
                 locator = f"page {page_index + 1}"
                 parts.append(page_text)
                 segments.append((locator, page_text))
     if not parts:
-        raise LoaderError(f"{path.name} has pages but no extractable text (scanned image?)")
+        hint = (
+            "scanned image; no embedded text"
+            if not ocr
+            else "OCR produced no text either (blank pages or unreadable scan)"
+        )
+        extra = "" if ocr else " - set PDF_OCR_FALLBACK=true to OCR it"
+        raise LoaderError(f"{path.name} has pages but no extractable text ({hint}){extra}")
+    if ocr_pages:
+        logging.getLogger(__name__).info("OCR'd %d page(s) of %s", ocr_pages, path.name)
     return LoadedSource(source_type=SourceType.pdf, text="\n\n".join(parts), segments=segments)
+
+
+def _ocr_page(page, pymupdf) -> str:
+    """Rasterise one PDF page at ~300 DPI and run Tesseract over it."""
+    try:
+        import io
+
+        import pytesseract
+        from PIL import Image
+    except ImportError as exc:
+        raise LoaderError("OCR fallback needs the 'ocr' extra: pip install -e \".[ocr]\"") from exc
+
+    pix = page.get_pixmap(matrix=pymupdf.Matrix(300 / 72, 300 / 72))
+    image = Image.open(io.BytesIO(pix.tobytes("png")))
+    try:
+        return pytesseract.image_to_string(image)
+    except pytesseract.TesseractNotFoundError as exc:
+        raise LoaderError(
+            "OCR fallback needs the Tesseract binary on PATH "
+            "(brew install tesseract / apt-get install tesseract-ocr)"
+        ) from exc
 
 
 def _load_csv(path: Path) -> LoadedSource:

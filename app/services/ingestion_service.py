@@ -78,6 +78,7 @@ class IngestionService:
                 filename=filename,
                 chunk_size=self._settings.chunk_size,
                 chunk_overlap=self._settings.chunk_overlap,
+                ocr_pdf=self._settings.pdf_ocr_fallback,
             )
         except (LoaderError, ValueError) as exc:
             with session_scope() as session:
