@@ -22,7 +22,9 @@ COPY frontend ./frontend
 COPY scripts ./scripts
 COPY sample_data ./sample_data
 
-RUN uv pip install --system --no-cache ".[ocr]"
+# ocr = scanned-PDF fallback; pgvector = optional shared vector store.
+# Both are inert unless PDF_OCR_FALLBACK / VECTOR_BACKEND select them.
+RUN uv pip install --system --no-cache ".[ocr,pgvector]"
 
 # Non-root runtime
 RUN useradd --create-home --uid 10001 appuser \
