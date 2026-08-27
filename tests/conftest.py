@@ -13,14 +13,13 @@ from pathlib import Path
 import pytest
 
 _TMP = Path(tempfile.mkdtemp(prefix="eai-tests-"))
-os.environ.update(
-    LLM_MODE="mock",
-    DATABASE_URL=f"sqlite:///{_TMP / 'test.sqlite3'}",
-    VECTOR_STORE_DIR=str(_TMP / "vector"),
-    UPLOAD_DIR=str(_TMP / "uploads"),
-    REDIS_URL="",
-    LOG_LEVEL="WARNING",
-)
+# Force the offline test profile...
+os.environ.update(LLM_MODE="mock", REDIS_URL="", LOG_LEVEL="WARNING")
+# ...but let CI (or a developer) point storage at a real Postgres by pre-setting
+# these - the pgvector integration job does exactly that.
+os.environ.setdefault("DATABASE_URL", f"sqlite:///{_TMP / 'test.sqlite3'}")
+os.environ.setdefault("VECTOR_STORE_DIR", str(_TMP / "vector"))
+os.environ.setdefault("UPLOAD_DIR", str(_TMP / "uploads"))
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 SAMPLE_DIR = REPO_ROOT / "sample_data"
