@@ -3,21 +3,21 @@ FROM python:3.11-slim AS base
 
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
-    PIP_NO_CACHE_DIR=1
+    PIP_NO_CACHE_DIR=1 \
+    PYTHONPATH=/app
 
 WORKDIR /app
 
 # uv for fast, reproducible installs
 COPY --from=ghcr.io/astral-sh/uv:0.5.11 /uv /bin/uv
 
-# Install dependencies first for layer caching
 COPY pyproject.toml README.md ./
-RUN uv pip install --system --no-cache .
-
 COPY app ./app
 COPY frontend ./frontend
 COPY scripts ./scripts
 COPY sample_data ./sample_data
+
+RUN uv pip install --system --no-cache .
 
 # Non-root runtime
 RUN useradd --create-home --uid 10001 appuser \

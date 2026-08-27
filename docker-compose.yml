@@ -18,6 +18,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_started
+      seed:
+        condition: service_completed_successfully
 
   seed:
     build: .
